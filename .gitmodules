@@ -1,0 +1,12 @@
+[submodule "salam-telegram-bot"]
+	path = salam-telegram-bot
+	url = https://github.com/allaithbitar/salam-telegram-bot
+[submodule "bot"]
+	path = bot
+	url = https://github.com/allaithbitar/salam-telegram-bot
+[submodule "server"]
+	path = server
+	url = https://github.com/allaithbitar/salam-bot-server
+[submodule "dashboard"]
+	path = dashboard
+	url = https://github.com/allaithbitar/salam-bot-dashboard.git

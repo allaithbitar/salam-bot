@@ -1,0 +1,127 @@
+services:
+  db:
+    image: postgres:14.5
+    container_name: ${POSTGRES_HOST}
+    env_file: .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+    # volumes:
+    #   - ~/docker-volumes/salam-telegram-bot-db:/var/lib/postgresql/data
+
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+
+    command: "-p ${POSTGRES_PORT}"
+
+  redis-db:
+    env_file: .env
+    image: docker.io/bitnami/valkey:8.0
+    container_name: ${VALKEY_HOST}
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6379:6379"
+
+  api:
+    container_name: ${API_HOST}
+    env_file: .env
+
+    build:
+      context: "./server"
+      args:
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_HOST: ${POSTGRES_HOST}
+        POSTGRES_PORT: ${POSTGRES_PORT}
+        API_PORT: ${API_PORT}
+
+    # ports: # Expose the port if you need to access it from the host
+    #   - "4000:4000" # Example prt
+
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
+    #   interval: 1s
+    #   timeout: 5s
+    #   retries: 10
+    #   start_period: 1s # Give the API some time to start
+
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+
+    ports:
+      - ${API_PORT}:${API_PORT}
+
+  main:
+    env_file: .env
+    container_name: ${BOT_HOST}
+    build:
+      context: "./bot"
+      args:
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_HOST: ${POSTGRES_HOST}
+        POSTGRES_PORT: ${POSTGRES_PORT}
+        API_PORT: ${API_PORT}
+        API_HOST: ${API_HOST}
+        BOT_TOKEN: ${BOT_TOKEN}
+        DASHBOARD_HOST: ${DASHBOARD_HOST}
+        DASHBOARD_PORT: ${DASHBOARD_PORT}
+        SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
+        SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
+
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: false
+      redis-db:
+        condition: service_started
+        restart: true
+      api:
+        condition: service_started
+        restart: true
+
+    expose:
+      - ${API_PORT}
+
+  # dashboard:
+  #   env_file: .env
+  #   container_name: ${DASHBOARD_HOST}
+  #
+  #   build:
+  #     context: "./dashboard"
+  #     args:
+  #       API_HOST: ${API_HOST}
+  #       API_PORT: ${API_PORT}
+  #       DASHBOARD_PORT: ${DASHBOARD_PORT}
+  #
+  #   # ports: # Expose the port if you need to access it from the host
+  #   #   - "4000:4000" # Example prt
+  #
+  #   # healthcheck:
+  #   #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
+  #   #   interval: 1s
+  #   #   timeout: 5s
+  #   #   retries: 10
+  #   #   start_period: 1s # Give the API some time to start
+  #
+  #   depends_on:
+  #     api:
+  #       condition: service_started
+  #       restart: true
+  #
+  #   ports:
+  #     - ${DASHBOARD_PORT}:${DASHBOARD_PORT}
