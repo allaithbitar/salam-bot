@@ -79,7 +79,7 @@ services:
         API_HOST: ${API_HOST}
         BOT_TOKEN: ${BOT_TOKEN}
         DASHBOARD_HOST: ${DASHBOARD_HOST}
-        DASHBOARD_PORT: ${DASHBOARD_PORT}
+        # DASHBOARD_PORT: ${DASHBOARD_PORT}
         SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
         SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
 
@@ -97,31 +97,31 @@ services:
     expose:
       - ${API_PORT}
 
-  # dashboard:
-  #   env_file: .env
-  #   container_name: ${DASHBOARD_HOST}
-  #
-  #   build:
-  #     context: "./dashboard"
-  #     args:
-  #       API_HOST: ${API_HOST}
-  #       API_PORT: ${API_PORT}
-  #       DASHBOARD_PORT: ${DASHBOARD_PORT}
-  #
-  #   # ports: # Expose the port if you need to access it from the host
-  #   #   - "4000:4000" # Example prt
-  #
-  #   # healthcheck:
-  #   #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
-  #   #   interval: 1s
-  #   #   timeout: 5s
-  #   #   retries: 10
-  #   #   start_period: 1s # Give the API some time to start
-  #
-  #   depends_on:
-  #     api:
-  #       condition: service_started
-  #       restart: true
-  #
-  #   ports:
-  #     - ${DASHBOARD_PORT}:${DASHBOARD_PORT}
+  dashboard:
+    env_file: .env
+    container_name: ${DASHBOARD_CONTAINER_NAME}
+
+    build:
+      context: "./dashboard"
+      args:
+        API_HOST: ${API_HOST}
+        API_PORT: ${API_PORT}
+        # DASHBOARD_PORT: ${DASHBOARD_PORT}
+
+    # ports: # Expose the port if you need to access it from the host
+    #   - "4000:4000" # Example prt
+
+    # healthcheck:
+    #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
+    #   interval: 1s
+    #   timeout: 5s
+    #   retries: 10
+    #   start_period: 1s # Give the API some time to start
+
+    depends_on:
+      api:
+        condition: service_started
+        restart: true
+
+    ports:
+      - 80:80
