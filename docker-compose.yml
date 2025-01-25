@@ -49,7 +49,7 @@ services:
         API_PORT: ${API_PORT}
         SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
         SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
-        NODE_ENV: "development"
+        NODE_ENV: "production"
 
     healthcheck:
       test:
@@ -84,7 +84,7 @@ services:
         API_PORT: ${API_PORT}
         API_HOST: ${API_HOST}
         BOT_TOKEN: ${BOT_TOKEN}
-        NODE_ENV: "development"
+        NODE_ENV: "production"
 
     depends_on:
       db:
