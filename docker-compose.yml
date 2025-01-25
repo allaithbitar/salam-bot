@@ -8,8 +8,6 @@ services:
       interval: 1s
       timeout: 5s
       retries: 10
-    # volumes:
-    #   - ~/docker-volumes/salam-telegram-bot-db:/var/lib/postgresql/data
 
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -22,15 +20,19 @@ services:
 
     command: "-p ${POSTGRES_PORT}"
 
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+
   redis-db:
     env_file: .env
     image: docker.io/bitnami/valkey:8.0
     container_name: ${VALKEY_HOST}
     environment:
-      # ALLOW_EMPTY_PASSWORD is recommended only for development.
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - "6379:6379"
+    volumes:
+      - valkey_db:/var/lib/postgresql/data
 
   api:
     container_name: ${API_HOST}
@@ -45,16 +47,20 @@ services:
         POSTGRES_HOST: ${POSTGRES_HOST}
         POSTGRES_PORT: ${POSTGRES_PORT}
         API_PORT: ${API_PORT}
+        SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
+        SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
+        NODE_ENV: "development"
 
-    # ports: # Expose the port if you need to access it from the host
-    #   - "4000:4000" # Example prt
-
-    # healthcheck:
-    #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
-    #   interval: 1s
-    #   timeout: 5s
-    #   retries: 10
-    #   start_period: 1s # Give the API some time to start
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --spider -q http://localhost:${API_PORT}/ping || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s # Important for initial startup
 
     depends_on:
       db:
@@ -78,20 +84,17 @@ services:
         API_PORT: ${API_PORT}
         API_HOST: ${API_HOST}
         BOT_TOKEN: ${BOT_TOKEN}
-        DASHBOARD_HOST: ${DASHBOARD_HOST}
-        # DASHBOARD_PORT: ${DASHBOARD_PORT}
-        SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
-        SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
+        NODE_ENV: "development"
 
     depends_on:
       db:
         condition: service_healthy
-        restart: false
+        restart: true
       redis-db:
         condition: service_started
         restart: true
       api:
-        condition: service_started
+        condition: service_healthy
         restart: true
 
     expose:
@@ -103,25 +106,21 @@ services:
 
     build:
       context: "./dashboard"
+      dockerfile: "Dockerfile.dev"
       args:
-        API_HOST: ${API_HOST}
+        API_HOST: "localhost"
         API_PORT: ${API_PORT}
-        # DASHBOARD_PORT: ${DASHBOARD_PORT}
-
-    # ports: # Expose the port if you need to access it from the host
-    #   - "4000:4000" # Example prt
-
-    # healthcheck:
-    #   test: ["CMD-SHELL", "curl --fail -G http://localhost:3000/ping"] # Replace /health with your API's health endpoint
-    #   interval: 1s
-    #   timeout: 5s
-    #   retries: 10
-    #   start_period: 1s # Give the API some time to start
+        DASHBOARD_PORT: ${DASHBOARD_PORT}
 
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
         restart: true
 
     ports:
+      # for nginx
       - 80:80
+
+volumes:
+  postgres_db:
+  valkey_db:
