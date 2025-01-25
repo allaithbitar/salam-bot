@@ -1,0 +1,135 @@
+services:
+  db:
+    image: postgres:14.5
+    container_name: ${POSTGRES_HOST}
+    env_file: .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+
+    command: "-p ${POSTGRES_PORT}"
+
+    volumes:
+      - dev_postgres_db:/var/lib/postgresql/data
+
+  redis-db:
+    env_file: .env
+    image: docker.io/bitnami/valkey:8.0
+    container_name: ${VALKEY_HOST}
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_valkey_db:/var/lib/postgresql/data
+
+  api:
+    container_name: ${API_HOST}
+    env_file: .env
+
+    build:
+      context: "./server"
+      args:
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_HOST: ${POSTGRES_HOST}
+        POSTGRES_PORT: ${POSTGRES_PORT}
+        API_PORT: ${API_PORT}
+        SETTINGS_TOKEN_HASH_SALT: ${SETTINGS_TOKEN_HASH_SALT}
+        SETTINGS_TOKEN_IV: ${SETTINGS_TOKEN_IV}
+        NODE_ENV: "development"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --spider -q http://localhost:${API_PORT}/ping || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s # Important for initial startup
+
+    volumes:
+      - ./server/src:/app/src # Bind mount for hot reloading
+
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+
+    ports:
+      - ${API_PORT}:${API_PORT}
+
+  main:
+    env_file: .env
+    container_name: ${BOT_HOST}
+    build:
+      context: "./bot"
+      args:
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_DB: ${POSTGRES_DB}
+        POSTGRES_HOST: ${POSTGRES_HOST}
+        POSTGRES_PORT: ${POSTGRES_PORT}
+        API_PORT: ${API_PORT}
+        API_HOST: ${API_HOST}
+        BOT_TOKEN: ${BOT_TOKEN}
+        NODE_ENV: "development"
+
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      redis-db:
+        condition: service_started
+        restart: true
+      api:
+        condition: service_healthy
+        restart: true
+
+    expose:
+      - ${API_PORT}
+
+    volumes:
+      - ./bot/src:/app/src # Bind mount for hot reloading
+
+  dashboard:
+    env_file: .env
+    container_name: ${DASHBOARD_CONTAINER_NAME}
+
+    build:
+      context: "./dashboard"
+      dockerfile: "Dockerfile.dev"
+      args:
+        API_HOST: "localhost"
+        API_PORT: ${API_PORT}
+        DASHBOARD_PORT: ${DASHBOARD_PORT}
+
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+
+    volumes:
+      - ./dashboard/src:/app/src # Bind mount for hot reloading
+      - ./dashboard/public:/app/public # Bind mount for hot reloading
+
+    ports:
+      - ${DASHBOARD_PORT}:${DASHBOARD_PORT}
+
+volumes:
+  dev_postgres_db: # Define the named volume
+  dev_valkey_db: # Define the named volume
