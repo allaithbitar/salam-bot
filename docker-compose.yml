@@ -4,7 +4,11 @@ services:
     container_name: ${POSTGRES_HOST}
     env_file: .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -d ${POSTGRES_DB} -U ${POSTGRES_USER} -p ${POSTGRES_PORT}",
+        ]
       interval: 1s
       timeout: 5s
       retries: 10
@@ -21,7 +25,7 @@ services:
     command: "-p ${POSTGRES_PORT}"
 
     volumes:
-      - postgres_db:/var/lib/postgresql/data
+      - salam_telegram_bot_db:/var/lib/postgresql/data
 
   redis-db:
     env_file: .env
@@ -126,5 +130,5 @@ services:
       - ${DASHBOARD_PORT}:${DASHBOARD_PORT}
 
 volumes:
-  postgres_db:
+  salam_telegram_bot_db:
   valkey_db:
